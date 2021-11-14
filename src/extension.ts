@@ -25,7 +25,8 @@ const baseName = 'Idris 2 LSP';
 export function activate(context: ExtensionContext) {
   const extensionConfig = workspace.getConfiguration("idris2-lsp");
   const command: string = extensionConfig.get("path") || "";
-  const debugChannel = window.createOutputChannel(baseName + ' Server');
+  const debugOutChannel = window.createOutputChannel(baseName + ' Server stdout');
+  const debugErrChannel = window.createOutputChannel(baseName + ' Server stderr');
   const serverOptions: ServerOptions = () => new Promise<StreamInfo>((resolve, reject) => {
     const serverProcess = spawn(command, [], { cwd: rootPath() });
     if (!serverProcess || !serverProcess.pid) {
@@ -40,11 +41,15 @@ export function activate(context: ExtensionContext) {
 
     const stderr = serverProcess.stderr;
     stderr.setEncoding('utf-8');
-    stderr.on('data', data => debugChannel.append(data));
+    stderr.on('data', data => debugErrChannel.append(data));
+
+    const stdout = serverProcess.stdout;
+    // stdout.setEncoding('utf-8');
+    stderr.on('data', data => debugOutChannel.append(data));
 
     resolve({
       writer: serverProcess.stdin,
-      reader: sanitized(serverProcess.stdout, debugChannel),
+      reader: sanitized(stdout, debugErrChannel),
       detached: true // let us handle the disposal of the server
     });
   });
